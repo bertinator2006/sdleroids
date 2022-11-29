@@ -1,26 +1,42 @@
 #include <iostream>
 #include <cmath>
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 typedef struct position {
     double x;
     double y;
 } position;
 
+typedef struct bullet {
+    double x, y;
+    double angle;
+    double vel_x, vel_y;
+} bullet;
+
+typedef struct entity {
+    double x;
+    double y;
+    double angle;
+    int size;
+    double vel_x;
+    double vel_y;
+} entity;
+
 bool init();
 bool run_game();
 void close();
 double degrees_to_radians(double degrees);
 position angle_to_position(position origin, double angle);
-void render_character(position char_pos, double char_angle);
+void render_character(entity character);
 
 
 const int SCREEN_WIDTH = 500;
 const int SCREEN_HEIGHT = 500;
 const int FRAMETIME = 1000 / 4;
-const int GLOBAL_SPEED = 100;
-const int PLAYER_SIZE = 10;
+const int GLOBAL_SPEED = 200;
+int* bullets;
+int bullet_count;
 
 
 SDL_Window* gWindow = NULL;
@@ -28,9 +44,7 @@ SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Rect player_rect;
 
-
-double player_angle;
-position player_pos;
+entity player;
 
 
 int main()
@@ -47,10 +61,18 @@ bool run_game()
     Uint64 LAST = 0;
     double deltaTime = 0;
     bool quit = false;
-    SDL_Event e;
-    player_pos.x = SCREEN_WIDTH / 2;
-    player_pos.y = SCREEN_HEIGHT / 2;
-    player_angle = 0;
+    SDL_Event event;
+
+    player.x = SCREEN_WIDTH / 2;
+    player.y = SCREEN_HEIGHT / 2;
+    player.angle = 0;
+    player.size = 10;
+    player.vel_x = 0;
+    player.vel_y = 0;
+
+    bullets = {};
+    bullet_count = 0;
+    
 
     while (!quit)
     {
@@ -58,35 +80,60 @@ bool run_game()
         NOW = SDL_GetPerformanceCounter();
         deltaTime = (double)((NOW - LAST) / (double)SDL_GetPerformanceFrequency());
 
-        while (SDL_PollEvent(&e)) //input
+        while (SDL_PollEvent(&event)) //input
         {
-            if (e.type == SDL_QUIT)
+            if (event.type == SDL_QUIT || event.key.keysym.sym == SDLK_ESCAPE)
             {
                 quit = true;
             }
-
-            const Uint8* key_state= SDL_GetKeyboardState(NULL);
-
-            if (key_state[SDL_SCANCODE_LEFT])
-            {
-                player_angle -= 10;
-            }
-            if (key_state[SDL_SCANCODE_RIGHT])
-            {
-                player_angle += 10;
-            }
-            //THERE IS A PROBLEM HERE WITH HOLDING THE KEYDOWN
-            //AND THIS PROBLEM NEEDS TO BE RESOLVED BEFORE ANYTHING ELSE
-            //BELOW IS A PROBLEM THAT I HAVE PURPOSELY ADDED TO REMIND MYSELF TO SOLVE THIS ISSUE
-
         }
+
+        //input
+        const Uint8* key_state= SDL_GetKeyboardState(NULL);
+
+        //player turning
+        if (key_state[SDL_SCANCODE_LEFT])
+            player.angle -= (double)GLOBAL_SPEED*deltaTime;
+
+        if (key_state[SDL_SCANCODE_RIGHT])
+            player.angle += (double)GLOBAL_SPEED*deltaTime;
+        
+        if (player.angle < 0)
+            player.angle += 360;
+        if(player.angle > 360)
+            player.angle -= 360;
+        
+        if (key_state[SDL_SCANCODE_UP])
+        {
+            player.vel_x += sin(degrees_to_radians(player.angle))*GLOBAL_SPEED*deltaTime;
+            player.vel_y -= cos(degrees_to_radians(player.angle))*GLOBAL_SPEED*deltaTime;
+        }
+        if (key_state[SDL_SCANCODE_SPACE])
+        {
+            //create bullet
+        }
+        //int SDL_RenderDrawPoint(SDL_Renderer * renderer, int x, int y);
         
 
+        //game logic
+        player.x += player.vel_x*deltaTime;
+        player.y += player.vel_y*deltaTime;
+
+        if (player.x - player.size> SCREEN_WIDTH)
+            player.x -= SCREEN_WIDTH;
+        if(player.y - player.size > SCREEN_HEIGHT)
+            player.y -=SCREEN_HEIGHT;
+        if (player.x + player.size < 0)
+            player.x += SCREEN_WIDTH;
+        if(player.y + player.size < 0 )
+            player.y +=SCREEN_HEIGHT;
+
+
         //rendering
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderClear(renderer);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        render_character(player_pos, player_angle);
+        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        render_character(player);
         SDL_RenderPresent(renderer);
     }
 
@@ -96,11 +143,14 @@ bool run_game()
 }
 
 
-void render_character(position char_pos, double char_angle)
+void render_character(entity character)
 {
-    position d1 = angle_to_position(char_pos, char_angle);
-    position d2 = angle_to_position(char_pos, char_angle + 150);
-    position d3 = angle_to_position(char_pos, char_angle + 210);
+    position pos;
+    pos.x = character.x;
+    pos.y = character.y;
+    position d1 = angle_to_position(pos, character.angle);
+    position d2 = angle_to_position(pos, character.angle + 150);
+    position d3 = angle_to_position(pos, character.angle + 210);
     SDL_RenderDrawLine(renderer, d1.x, d1.y, d2.x, d2.y);
     SDL_RenderDrawLine(renderer, d1.x, d1.y, d3.x, d3.y);
     SDL_RenderDrawLine(renderer, d2.x, d2.y, d3.x, d3.y);
@@ -114,8 +164,8 @@ double degrees_to_radians(double degrees)
 position angle_to_position(position origin, double angle)
 {
     position point;
-    point.x = origin.x + sin(degrees_to_radians(angle)) * PLAYER_SIZE;
-    point.y = origin.y - cos(degrees_to_radians(angle)) * PLAYER_SIZE;
+    point.x = origin.x + sin(degrees_to_radians(angle)) * player.size;
+    point.y = origin.y - cos(degrees_to_radians(angle)) * player.size;
     return point;
 }
 

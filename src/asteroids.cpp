@@ -8,11 +8,6 @@ typedef struct position {
     double y;
 } position;
 
-typedef struct bullet {
-    double x, y;
-    double angle;
-    double vel_x, vel_y;
-} bullet;
 
 typedef struct entity {
     double x;
@@ -23,21 +18,21 @@ typedef struct entity {
     double vel_y;
 } entity;
 
+//assigned in game.cpp
 bool init();
-bool run_game();
 void close();
-double degrees_to_radians(double degrees);
+double deg_to_radian(double degrees);
 position angle_to_position(position origin, double angle);
 void render_character(entity character);
+
+//assigned in asteroids.cpp
+bool run_game();
 
 
 const int SCREEN_WIDTH = 500;
 const int SCREEN_HEIGHT = 500;
 const int FRAMETIME = 1000 / 4;
-const int GLOBAL_SPEED = 200;
-int* bullets;
-int bullet_count;
-
+const int SPEED = 200;
 
 SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
@@ -46,16 +41,16 @@ SDL_Rect player_rect;
 
 entity player;
 
-
 int main()
 {
     run_game();
 	return 0;
 }
 
-
 bool run_game()
 {
+    double frameTime = 0;
+    double frameCount = 0;
     init();
     Uint64 NOW = SDL_GetPerformanceCounter();
     Uint64 LAST = 0;
@@ -69,9 +64,6 @@ bool run_game()
     player.size = 10;
     player.vel_x = 0;
     player.vel_y = 0;
-
-    bullets = {};
-    bullet_count = 0;
     
 
     while (!quit)
@@ -93,10 +85,10 @@ bool run_game()
 
         //player turning
         if (key_state[SDL_SCANCODE_LEFT])
-            player.angle -= (double)GLOBAL_SPEED*deltaTime;
+            player.angle -= (double)SPEED*deltaTime;
 
         if (key_state[SDL_SCANCODE_RIGHT])
-            player.angle += (double)GLOBAL_SPEED*deltaTime;
+            player.angle += (double)SPEED*deltaTime;
         
         if (player.angle < 0)
             player.angle += 360;
@@ -105,9 +97,15 @@ bool run_game()
         
         if (key_state[SDL_SCANCODE_UP])
         {
-            player.vel_x += sin(degrees_to_radians(player.angle))*GLOBAL_SPEED*deltaTime;
-            player.vel_y -= cos(degrees_to_radians(player.angle))*GLOBAL_SPEED*deltaTime;
+            player.vel_x += sin(deg_to_radian(player.angle))*SPEED*deltaTime;
+            player.vel_y -= cos(deg_to_radian(player.angle))*SPEED*deltaTime;
         }
+        else
+        {
+            player.vel_x -= player.vel_x*0.5*deltaTime;
+            player.vel_y -= player.vel_y*0.5*deltaTime;
+        }
+
         if (key_state[SDL_SCANCODE_SPACE])
         {
             //create bullet
@@ -135,13 +133,21 @@ bool run_game()
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         render_character(player);
         SDL_RenderPresent(renderer);
+        
+        frameTime += deltaTime;
+        frameCount += 1;
+        if (frameTime >= 1)
+        {
+            frameTime = 0;
+            std::cout << frameCount << std::endl;
+            frameCount = 0;
+        }
     }
 
     //runs if quit == true
     close();
     return 0;
 }
-
 
 void render_character(entity character)
 {
@@ -156,7 +162,7 @@ void render_character(entity character)
     SDL_RenderDrawLine(renderer, d2.x, d2.y, d3.x, d3.y);
 }
     
-double degrees_to_radians(double degrees)
+double deg_to_radian(double degrees)
 {
     return degrees * (M_PI / 180);
 }
@@ -164,8 +170,8 @@ double degrees_to_radians(double degrees)
 position angle_to_position(position origin, double angle)
 {
     position point;
-    point.x = origin.x + sin(degrees_to_radians(angle)) * player.size;
-    point.y = origin.y - cos(degrees_to_radians(angle)) * player.size;
+    point.x = origin.x + sin(deg_to_radian(angle)) * player.size;
+    point.y = origin.y - cos(deg_to_radian(angle)) * player.size;
     return point;
 }
 
@@ -189,7 +195,7 @@ bool init()
         else
         {
 
-            renderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+            renderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_PRESENTVSYNC);
             if (renderer == NULL)
             {
                 printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -209,3 +215,4 @@ void close()
 
     SDL_Quit();
 }
+

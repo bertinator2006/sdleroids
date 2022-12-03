@@ -1,51 +1,14 @@
-#include <iostream>
-#include <cmath>
-#define SDL_MAIN_HANDLED
-#include <SDL2/SDL.h>
+#include "game.h"
 
-typedef struct position {
-    double x;
-    double y;
-} position;
-
-
-typedef struct entity {
-    double x;
-    double y;
-    double angle;
-    int size;
-    double vel_x;
-    double vel_y;
-} entity;
-
-//assigned in game.cpp
-bool init();
-void close();
-double deg_to_radian(double degrees);
-position angle_to_position(position origin, double angle);
-void render_character(entity character);
-
-//assigned in asteroids.cpp
-bool run_game();
-
-
-const int SCREEN_WIDTH = 500;
-const int SCREEN_HEIGHT = 500;
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
 const int FRAMETIME = 1000 / 4;
-const int SPEED = 200;
-
+const int SPEED = 300;
 SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* renderer = NULL;
 SDL_Rect player_rect;
-
 entity player;
-
-int main()
-{
-    run_game();
-	return 0;
-}
 
 bool run_game()
 {
@@ -61,10 +24,10 @@ bool run_game()
     player.x = SCREEN_WIDTH / 2;
     player.y = SCREEN_HEIGHT / 2;
     player.angle = 0;
-    player.size = 10;
+    player.size = 15;
     player.vel_x = 0;
     player.vel_y = 0;
-    
+
 
     while (!quit)
     {
@@ -81,29 +44,29 @@ bool run_game()
         }
 
         //input
-        const Uint8* key_state= SDL_GetKeyboardState(NULL);
+        const Uint8* key_state = SDL_GetKeyboardState(NULL);
 
         //player turning
         if (key_state[SDL_SCANCODE_LEFT])
-            player.angle -= (double)SPEED*deltaTime;
+            player.angle -= (double)SPEED * deltaTime;
 
         if (key_state[SDL_SCANCODE_RIGHT])
-            player.angle += (double)SPEED*deltaTime;
-        
+            player.angle += (double)SPEED * deltaTime;
+
         if (player.angle < 0)
             player.angle += 360;
-        if(player.angle > 360)
+        if (player.angle > 360)
             player.angle -= 360;
-        
+
         if (key_state[SDL_SCANCODE_UP])
         {
-            player.vel_x += sin(deg_to_radian(player.angle))*SPEED*deltaTime;
-            player.vel_y -= cos(deg_to_radian(player.angle))*SPEED*deltaTime;
+            player.vel_x += sin(deg_to_radian(player.angle)) * SPEED * deltaTime;
+            player.vel_y -= cos(deg_to_radian(player.angle)) * SPEED * deltaTime;
         }
         else
         {
-            player.vel_x -= player.vel_x*0.5*deltaTime;
-            player.vel_y -= player.vel_y*0.5*deltaTime;
+            player.vel_x -= player.vel_x * 0.5 * deltaTime;
+            player.vel_y -= player.vel_y * 0.5 * deltaTime;
         }
 
         if (key_state[SDL_SCANCODE_SPACE])
@@ -111,20 +74,20 @@ bool run_game()
             //create bullet
         }
         //int SDL_RenderDrawPoint(SDL_Renderer * renderer, int x, int y);
-        
+
 
         //game logic
-        player.x += player.vel_x*deltaTime;
-        player.y += player.vel_y*deltaTime;
+        player.x += player.vel_x * deltaTime;
+        player.y += player.vel_y * deltaTime;
 
-        if (player.x - player.size> SCREEN_WIDTH)
+        if (player.x - player.size > SCREEN_WIDTH)
             player.x -= SCREEN_WIDTH;
-        if(player.y - player.size > SCREEN_HEIGHT)
-            player.y -=SCREEN_HEIGHT;
+        if (player.y - player.size > SCREEN_HEIGHT)
+            player.y -= SCREEN_HEIGHT;
         if (player.x + player.size < 0)
             player.x += SCREEN_WIDTH;
-        if(player.y + player.size < 0 )
-            player.y +=SCREEN_HEIGHT;
+        if (player.y + player.size < 0)
+            player.y += SCREEN_HEIGHT;
 
 
         //rendering
@@ -133,15 +96,15 @@ bool run_game()
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         render_character(player);
         SDL_RenderPresent(renderer);
-        
-        frameTime += deltaTime;
-        frameCount += 1;
-        if (frameTime >= 1)
-        {
-            frameTime = 0;
-            std::cout << frameCount << std::endl;
-            frameCount = 0;
-        }
+
+        //frameTime += deltaTime;
+        //frameCount += 1;
+        //if (frameTime >= 1)
+        //{
+        //    frameTime = 0;
+        //    std::cout << frameCount << std::endl;
+        //    frameCount = 0;
+        //}
     }
 
     //runs if quit == true
@@ -161,7 +124,7 @@ void render_character(entity character)
     SDL_RenderDrawLine(renderer, d1.x, d1.y, d3.x, d3.y);
     SDL_RenderDrawLine(renderer, d2.x, d2.y, d3.x, d3.y);
 }
-    
+
 double deg_to_radian(double degrees)
 {
     return degrees * (M_PI / 180);
@@ -186,7 +149,7 @@ bool init()
     }
     else
     {
-        gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        gWindow = SDL_CreateWindow("SDLeroids", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         if (gWindow == NULL)
         {
             std::cout << "Window could not be created! SDL_Error: %s\n" << SDL_GetError() << std::endl;
@@ -201,6 +164,7 @@ bool init()
                 printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
                 success = false;
             }
+            SDL_ShowCursor(0);
         }
     }
 
@@ -215,4 +179,3 @@ void close()
 
     SDL_Quit();
 }
-
